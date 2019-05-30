@@ -5,6 +5,7 @@ private const float threshold = 10f;
 private const float maxSpeed = 20f;
 private const float dockingSpeed = 4f;
 private const float speedMarginOfError = maxSpeed * 0.05f;
+private const float operationalCharge = 0.95f;
 
 private bool run = false;
 private List<IMyTerminalBlock> wheels;
@@ -12,6 +13,8 @@ private IMyRadioAntenna antenna;
 private IMyReflectorLight frontLight;
 private IMyShipController remoteControl;
 private IMyMechanicalConnectionBlock frontConnector;
+private IMyBatteryBlock battery;
+private float maxStoredPower = 0;
 private double velocity = 0;
 private string target;
 private Vector3D targetPosition;
@@ -53,6 +56,9 @@ public Program()
 
     // Connectors.
     frontConnector = GridTerminalSystem.GetBlockWithName("Front Connector") as IMyMechanicalConnectionBlock;
+
+    battery = GridTerminalSystem.GetBlockWithName("Battery") as IMyBatteryBlock;
+    maxStoredPower = battery.MaxStoredPower();
 
     // Set initial target.
     target = "End";
@@ -157,6 +163,7 @@ public void Main(string argument, UpdateType updateSource)
 
         // if battery is full && cargo is full
         // or timer > than...
+        // (battery.CurrentStoredPower / maxStoredPower > operationalCharge)
         if (DateTime.Now > timer)
         {
             ChangeDestination();
