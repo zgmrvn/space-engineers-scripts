@@ -1,17 +1,25 @@
 private Vector3D start = new Vector3(-51677.18, -27949.92, 16191.69);
-private Vector3D end = new Vector3(-51661.19, -27989.10, 16175.97);
-private const float startToSlowDown = 20f;
+private Vector3D end = new Vector3(-51631.73, -28060.25, 16146.92);
+private const float startToSlowDown = 30f;
 private const float threshold = 10f;
-private const float maxSpeed = 10f;
+private const float maxSpeed = 20f;
+private const float dockingSpeed = 4f;
+private const float speedMarginOfError = maxSpeed * 0.05f;
 
 private bool run = false;
 private List<IMyTerminalBlock> wheels;
-private IMyReflectorLight frontLight;
 private IMyRadioAntenna antenna;
+private IMyReflectorLight frontLight;
+private IMyShipController remoteControl;
+private IMyMechanicalConnectionBlock frontConnector;
+private double velocity = 0;
 private string target;
 private Vector3D targetPosition;
 
+// temp
 private int tempCounter = 0;
+private double targetVelocity = 0;
+private DateTime timer;
 
 private enum Phase
 {
@@ -23,6 +31,7 @@ private enum Phase
 
 private Phase phase = Phase.Crusing;
 
+#region Contructor
 public Program()
 {
     Runtime.UpdateFrequency = UpdateFrequency.Update10;
@@ -37,25 +46,38 @@ public Program()
     antenna = GridTerminalSystem.GetBlockWithName("Antenna") as IMyRadioAntenna;
 
     // Lights.
-    frontLight = GridTerminalSystem.GetBlockWithName("FrontLight") as IMyReflectorLight;
+    frontLight = GridTerminalSystem.GetBlockWithName("Front Light") as IMyReflectorLight;
 
+    // Remote control.
+    remoteControl = GridTerminalSystem.GetBlockWithName("Remote Control") as IMyShipController;
+
+    // Connectors.
+    frontConnector = GridTerminalSystem.GetBlockWithName("Front Connector") as IMyMechanicalConnectionBlock;
 
     // Set initial target.
     target = "End";
     targetPosition = end;
 
     // ChangeDestination();
-    InvertPropulsion();
+
+    targetVelocity = maxSpeed;
+    //InvertPropulsion();
     ToggleWheels(true);
+
     //frontLight.ApplyAction("OnOff_On");
 }
+#endregion
 
 public void Main(string argument, UpdateType updateSource)
 {
-    Echo(target);
-    Echo(DistanceToTarget().ToString());
-    Echo(phase.ToString());
-    Echo(Me.ToString());
+    velocity = remoteControl.GetShipVelocities().LinearVelocity.Length() * 3600 / 1000;
+
+
+    Echo("Target: " + target + " (" + DistanceToTarget().ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "m)");
+    Echo("Phase: " + phase.ToString());
+    Echo("Velocity: " + velocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
+    Echo("MOE:" + speedMarginOfError.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
+    Echo("TV:" + targetVelocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
 
     if (tempCounter > 1)
     {
@@ -68,44 +90,98 @@ public void Main(string argument, UpdateType updateSource)
         return;
     }
 
-    // From Crusing to Deceleration phase.
+    #region Speed regulation
+    if (velocity < targetVelocity - 1)
+    {
+        ToggleWheels(true);
+    }
+
+    else if (velocity > targetVelocity + 1)
+    {
+        ToggleBrakes(true);
+    }
+
+    else if (velocity > targetVelocity)
+    {
+        ToggleBrakes(false);
+        ToggleWheels(false);
+    }
+    #endregion
+
+    #region Phases
+    // Crusing phase.
     if (DistanceToTarget() < startToSlowDown && phase == Phase.Crusing)
     {
         phase = Phase.Deceleration;
-
-        ToggleWheels(false);
+        targetVelocity = maxSpeed;
     }
 
+     // Deceleration phase.
     else if (phase == Phase.Deceleration)
     {
-        Echo(DecelerationStatus().ToString());
+        Echo("Deceleration: " + DecelerationStatus().ToString());
+        Echo("Target speed: " + (DecelerationStatus() * maxSpeed).ToString());
+
+        // If the vehicle slows down below the docking speed limit,
+        // we move to the next phase.
+        if (velocity < dockingSpeed)
+        {
+            targetVelocity = dockingSpeed;
+            phase = Phase.Docking;
+            timer = DateTime.Now.AddSeconds(2);
+            
+            return;
+        }
+
+        // Otherwise, we set the target velocity based on the deceleration progression.
+        targetVelocity = DecelerationStatus() * maxSpeed;
     }
 
-    // From Deceleration to Docking phase.
-    else if (DistanceToTarget() < threshold && phase == Phase.Deceleration)
+    // Docking phase.
+    else if (phase == Phase.Docking)
     {
-        phase = Phase.Docking;
-
-        ChangeDestination();
-        InvertPropulsion();
-
-        tempCounter++;
+        // look for a connector
+        // when found, stop and connect
+        // then move to docked phase
+        if (DateTime.Now > timer)
+        {
+            // frontConnector.Enabled = true;
+            timer = DateTime.Now.AddSeconds(5);
+            phase = Phase.Docked;
+        }
     }
 
-    // From Docking to Docked phase.
-    // else if (DistanceToTarget() < threshold && phase == Phase.Deceleration)
-    // {
-    //     phase = Phase.Docked;
-    //     ChangeDestination();
-    //     InvertPropulsion();
-    //     tempCounter++;
-    // }
+    // Docked phase.
+    else if (phase == Phase.Docked)
+    {
+
+        // if battery is full && cargo is full
+        // or timer > than...
+        if (DateTime.Now > timer)
+        {
+            ChangeDestination();
+            InvertPropulsion();
+            ToggleWheels(true);
+
+            // frontConnector.Enabled = false;
+            phase = Phase.Crusing;
+            targetVelocity = maxSpeed;
+
+            tempCounter++;
+        }
+    }
+    #endregion
 }
 
 private void ToggleWheels(bool state)
 {
-    string action = "OnOff_" + (state ? "On" : "Off");
+    if (state)
+    {
+        ToggleBrakes(false);
+    }
 
+    string action = "OnOff_" + (state ? "On" : "Off");
+    
     foreach (IMyMotorSuspension wheel in wheels)
     {
         wheel.ApplyAction(action);
@@ -127,7 +203,10 @@ private double DistanceToTarget()
 
 private void ToggleBrakes(bool state)
 {
-    ToggleWheels(false);
+    if (state)
+    {
+        ToggleWheels(false);
+    }
 
     foreach (IMyMotorSuspension wheel in wheels)
     {
@@ -145,42 +224,3 @@ private double DecelerationStatus()
 {
     return (DistanceToTarget() - (startToSlowDown - threshold)) / (startToSlowDown - threshold);
 }
-
-
-/* This program tests the new structures exposed in IMyShipController on Thursday, May 19, 2016.
-   Space Engineers version 01.135.004 
-
-   The exposed variables are courtesy of Lord Devious, a.k.a. Malware.
-   
-   This program written by Seamus Donohue of EVE University, Saturady, May 21st, 2016.
-
-   To use this program, set up a Timer Block set to Trigger Now on itself and run this program. */
- 
-// string outputblockstring = "Text Panel 1";
-// string remotecontrolstring = "Remote Control 1";
- 
-// void Main(string argument) { 
-//     IMyTerminalBlock rcblock = GridTerminalSystem.GetBlockWithName(remotecontrolstring);
-//     IMyTextPanel output = (IMyTextPanel)GridTerminalSystem.GetBlockWithName(outputblockstring); 
- 
-//     if (rcblock == null) throw new Exception("\n\nRemote Control not found by name, check string constants."); 
-//     if (output == null) throw new Exception("\n\nText Panel not found by name, check string constants."); 
- 
-//     IMyShipController rc = (IMyShipController)rcblock;
- 
-//     Vector3D rcposition = rc.GetPosition();
-
-//     MyShipVelocities velocitystats = rc.GetShipVelocities();
-//     MyShipMass massstats = rc.CalculateShipMass();
-
-//     int shipmass = massstats.BaseMass;
-//     int totalmass = massstats.TotalMass;
-//     Vector3D velocity = velocitystats.LinearVelocity;
-//     Vector3D rotation = velocitystats.AngularVelocity;
- 
-//     output.WritePublicText("Position:\n" + rcposition.X + "\n" + rcposition.Y + "\n" + rcposition.Z + "\n"
-//                          + "\nshipmass:" + shipmass + "\ntotalmass:" + totalmass
-//                          + "\ncargo:" + (totalmass-shipmass)
-//                          + "\nLinVel:\n" + velocity.X + "\n" + velocity.Y + "\n" + velocity.Z + "\n"
-//                          + "\nAngVel:\n" + rotation.X + "\n" + rotation.Y + "\n" + rotation.Z + "\n");
-// }
