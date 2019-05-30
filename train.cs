@@ -15,6 +15,8 @@ private IMyShipController remoteControl;
 private IMyMechanicalConnectionBlock frontConnector;
 private IMyBatteryBlock battery;
 private float maxStoredPower = 0;
+private IMyInventory frontContainer;
+private IMyInventory backContainer;
 private double velocity = 0;
 private string target;
 private Vector3D targetPosition;
@@ -49,16 +51,21 @@ public Program()
     antenna = GridTerminalSystem.GetBlockWithName("Antenna") as IMyRadioAntenna;
 
     // Lights.
-    frontLight = GridTerminalSystem.GetBlockWithName("Front Light") as IMyReflectorLight;
+    frontLight = GridTerminalSystem.GetBlockWithName("Light Front") as IMyReflectorLight;
 
     // Remote control.
     remoteControl = GridTerminalSystem.GetBlockWithName("Remote Control") as IMyShipController;
 
     // Connectors.
-    frontConnector = GridTerminalSystem.GetBlockWithName("Front Connector") as IMyMechanicalConnectionBlock;
+    frontConnector = GridTerminalSystem.GetBlockWithName("Connector Front") as IMyMechanicalConnectionBlock;
 
+    // Battery.
     battery = GridTerminalSystem.GetBlockWithName("Battery") as IMyBatteryBlock;
     maxStoredPower = battery.MaxStoredPower();
+
+    // Containers.
+    frontContainer = (GridTerminalSystem.GetBlockWithName("Container Front") as IMyCargoContainer).GetInventory();
+    backContainer = (GridTerminalSystem.GetBlockWithName("Container Back") as IMyCargoContainer).GetInventory();
 
     // Set initial target.
     target = "End";
@@ -163,7 +170,8 @@ public void Main(string argument, UpdateType updateSource)
 
         // if battery is full && cargo is full
         // or timer > than...
-        // (battery.CurrentStoredPower / maxStoredPower > operationalCharge)
+        // IsCharged()
+        // IsFull()
         if (DateTime.Now > timer)
         {
             ChangeDestination();
@@ -230,4 +238,14 @@ private void ChangeDestination()
 private double DecelerationStatus()
 {
     return (DistanceToTarget() - (startToSlowDown - threshold)) / (startToSlowDown - threshold);
+}
+
+private bool IsCharged()
+{
+    return battery.CurrentStoredPower / maxStoredPower > operationalCharge;
+}
+
+private bool IsFull()
+{
+    return frontContainer.IsFull && backContainer.IsFull;
 }
