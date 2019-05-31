@@ -5,7 +5,7 @@ private const float threshold = 10f;
 private const float maxSpeed = 50f;
 private const float dockingSpeed = 4f;
 private const float speedMarginOfError = maxSpeed * 0.05f;
-private const float operationalCharge = 0.95f;
+private const float operationalCharge = 0.99f;
 
 private bool run = false;
 private List<IMyTerminalBlock> wheels;
