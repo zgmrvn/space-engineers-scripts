@@ -1,8 +1,8 @@
-private Vector3D start = new Vector3(-51677.18, -27949.92, 16191.69);
-private Vector3D end = new Vector3(-51631.73, -28060.25, 16146.92);
-private const float startToSlowDown = 30f;
+private Vector3D start = new Vector3(-51682.91, -27953.14, 16193.54);
+private Vector3D end = new Vector3(-51633.83, -28061.43, 16147.59);
+private const float startToSlowDown = 70f;
 private const float threshold = 10f;
-private const float maxSpeed = 20f;
+private const float maxSpeed = 50f;
 private const float dockingSpeed = 4f;
 private const float speedMarginOfError = maxSpeed * 0.05f;
 private const float operationalCharge = 0.95f;
