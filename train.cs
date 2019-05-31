@@ -12,7 +12,8 @@ private List<IMyTerminalBlock> wheels;
 private IMyRadioAntenna antenna;
 private IMyReflectorLight frontLight;
 private IMyShipController remoteControl;
-private IMyMechanicalConnectionBlock frontConnector;
+private IMyShipConnector frontConnector;
+private IMyShipConnector backConnector;
 private IMyBatteryBlock battery;
 private float maxStoredPower = 0;
 private IMyInventory frontContainer;
@@ -57,7 +58,8 @@ public Program()
     remoteControl = GridTerminalSystem.GetBlockWithName("Remote Control") as IMyShipController;
 
     // Connectors.
-    frontConnector = GridTerminalSystem.GetBlockWithName("Connector Front") as IMyMechanicalConnectionBlock;
+    frontConnector = GridTerminalSystem.GetBlockWithName("Connector Front") as IMyShipConnector;
+    backConnector = GridTerminalSystem.GetBlockWithName("Connector Back") as IMyShipConnector;
 
     // Battery.
     battery = GridTerminalSystem.GetBlockWithName("Battery") as IMyBatteryBlock;
@@ -140,8 +142,8 @@ public void Main(string argument, UpdateType updateSource)
         if (velocity < dockingSpeed)
         {
             targetVelocity = dockingSpeed;
+            ConnectorsEnabled();
             phase = Phase.Docking;
-            timer = DateTime.Now.AddSeconds(2);
             
             return;
         }
@@ -156,10 +158,11 @@ public void Main(string argument, UpdateType updateSource)
         // look for a connector
         // when found, stop and connect
         // then move to docked phase
-        if (DateTime.Now > timer)
+        if (IsConnectable())
         {
-            // frontConnector.Enabled = true;
-            timer = DateTime.Now.AddSeconds(5);
+            ToggleBrakes(true);
+            Connect();
+
             phase = Phase.Docked;
         }
     }
@@ -172,15 +175,18 @@ public void Main(string argument, UpdateType updateSource)
         // or timer > than...
         // IsCharged()
         // IsFull()
-        if (DateTime.Now > timer)
+        if (IsCharged())
         {
+            Disconnect();
+            ConnectorsDisabled();
+            
+            targetVelocity = maxSpeed;
+
             ChangeDestination();
             InvertPropulsion();
             ToggleWheels(true);
 
-            // frontConnector.Enabled = false;
             phase = Phase.Crusing;
-            targetVelocity = maxSpeed;
 
             tempCounter++;
         }
@@ -248,4 +254,40 @@ private bool IsCharged()
 private bool IsFull()
 {
     return frontContainer.IsFull && backContainer.IsFull;
+}
+
+// Connectors.
+private void ConnectorsEnabled()
+{
+    frontConnector.Enabled = true;
+    backConnector.Enabled = true;
+}
+
+private void ConnectorsDisabled()
+{
+    frontConnector.Enabled = false;
+    backConnector.Enabled = false;
+}
+
+private void Connect()
+{
+    frontConnector.Connect();
+    backConnector.Connect();
+}
+
+private void Disconnect()
+{
+    frontConnector.Disconnect();
+    backConnector.Disconnect();
+}
+
+private bool IsConnectable()
+{
+    return frontConnector.Status == MyShipConnectorStatus.Connectable || backConnector.Status == MyShipConnectorStatus.Connectable;
+}
+
+
+private bool IsConnected()
+{
+    return frontConnector.Status == MyShipConnectorStatus.Connected || backConnector.Status == MyShipConnectorStatus.Connected;
 }
