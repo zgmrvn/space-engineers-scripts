@@ -61,7 +61,7 @@ public Program()
 
     // Battery.
     battery = GridTerminalSystem.GetBlockWithName("Battery") as IMyBatteryBlock;
-    maxStoredPower = battery.MaxStoredPower();
+    maxStoredPower = battery.MaxStoredPower;
 
     // Containers.
     frontContainer = (GridTerminalSystem.GetBlockWithName("Container Front") as IMyCargoContainer).GetInventory();
