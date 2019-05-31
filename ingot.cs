@@ -36,10 +36,11 @@ public void Main(string argument, UpdateType updateSource)
         // Prepare strings.
         string type = items[0].Type.ToString().Split('/')[1];
         string tons = ((float)inventory.CurrentMass / 1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " t";
+        string percentage = ((float)inventory.CurrentVolume / (float)inventory.MaxVolume * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
 
         // Write on screens.
-        screen.WriteText(type + " : " + tons + "\n", true);
+        screen.WriteText(type + " : " + tons + ", " + percentage + "%\n", true);
 
-        Echo(type  + " : " + tons);
+        Echo(type  + " : " + tons + ", " + percentage + "%");
     }
 }
