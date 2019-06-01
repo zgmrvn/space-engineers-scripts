@@ -1,9 +1,9 @@
 private Vector3D start = new Vector3(-51682.91, -27953.14, 16193.54);
-private Vector3D end = new Vector3(-51633.83, -28061.43, 16147.59);
-private const float startToSlowDown = 70f;
+private Vector3D end = new Vector3(-51508.45, -28377.40, 16021.13);
+private const float startToSlowDown = 170f;
 private const float threshold = 10f;
-private const float maxSpeed = 50f;
-private const float dockingSpeed = 4f;
+private const float maxSpeed = 100f;
+private const float dockingSpeed = 5f;
 private const float speedMarginOfError = maxSpeed * 0.05f;
 private const float operationalCharge = 0.99f;
 
@@ -14,6 +14,8 @@ private IMyReflectorLight frontLight;
 private IMyShipController remoteControl;
 private IMyShipConnector frontConnector;
 private IMyShipConnector backConnector;
+private IMyShipConnector frontEjector;
+private IMyShipConnector backEjector;
 private IMyBatteryBlock battery;
 private float maxStoredPower = 0;
 private IMyInventory frontContainer;
@@ -56,6 +58,10 @@ public Program()
 
     // Remote control.
     remoteControl = GridTerminalSystem.GetBlockWithName("Remote Control") as IMyShipController;
+
+    // Ejector.
+    frontEjector = GridTerminalSystem.GetBlockWithName("Ejector Front") as IMyShipConnector;
+    backEjector = GridTerminalSystem.GetBlockWithName("Ejector Back") as IMyShipConnector;
 
     // Connectors.
     frontConnector = GridTerminalSystem.GetBlockWithName("Connector Front") as IMyShipConnector;
@@ -160,7 +166,7 @@ public void Main(string argument, UpdateType updateSource)
         // then move to docked phase
         if (IsConnectable())
         {
-            ToggleBrakes(true);
+            // ToggleBrakes(true);
             Connect();
 
             phase = Phase.Docked;
@@ -291,3 +297,6 @@ private bool IsConnected()
 {
     return frontConnector.Status == MyShipConnectorStatus.Connected || backConnector.Status == MyShipConnectorStatus.Connected;
 }
+
+// Ejectors.
+// private void 

@@ -1,15 +1,14 @@
-private IMyBatteryBlock battery;
-private float maxStoredPower = 0;
+private IMyShipConnector connector;
 
 public Program()
 {
     Runtime.UpdateFrequency = UpdateFrequency.Update10;
 
-    battery = GridTerminalSystem.GetBlockWithName("Battery") as IMyBatteryBlock;
-    maxStoredPower = battery.MaxStoredPower;
+    connector = GridTerminalSystem.GetBlockWithName("Connector Front") as IMyShipConnector;
+    connector.Enabled = false;
 }
 
 public void Main(string argument, UpdateType updateSource)
 {
-    Echo((battery.CurrentStoredPower / maxStoredPower).ToString());
+    Echo(connector.Enabled.ToString());
 }
