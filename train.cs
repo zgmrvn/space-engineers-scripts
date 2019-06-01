@@ -1,5 +1,5 @@
-private Vector3D start = new Vector3(-51682.91, -27953.14, 16193.54);
-private Vector3D end = new Vector3(-51508.45, -28377.40, 16021.13);
+private Vector3D unload = new Vector3(-51682.91, -27953.14, 16193.54);
+private Vector3D load = new Vector3(-51508.45, -28377.40, 16021.13);
 private const float startToSlowDown = 170f;
 private const float threshold = 10f;
 private const float maxSpeed = 100f;
@@ -78,8 +78,8 @@ public Program()
     backContainer = (GridTerminalSystem.GetBlockWithName("Container Back") as IMyCargoContainer).GetInventory();
 
     // Set initial target.
-    target = "End";
-    targetPosition = end;
+    target = "Load";
+    targetPosition = load;
 
     // ChangeDestination();
 
@@ -248,8 +248,8 @@ private void ToggleBrakes(bool state)
 
 private void ChangeDestination()
 {
-    target = target == "End" ? "Start" : "End";
-    targetPosition = target == "End" ? end : start;
+    target = target == "Load" ? "Unload" : "Load";
+    targetPosition = target == "Load" ? load : unload;
 }
 
 private double DecelerationStatus()
