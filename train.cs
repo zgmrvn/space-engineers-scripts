@@ -11,6 +11,7 @@ private bool run = false;
 private List<IMyTerminalBlock> wheels;
 private IMyRadioAntenna antenna;
 private IMyReflectorLight frontLight;
+private IMyReflectorLight backLight;
 private IMyShipController remoteControl;
 private IMyShipConnector frontConnector;
 private IMyShipConnector backConnector;
@@ -55,6 +56,7 @@ public Program()
 
     // Lights.
     frontLight = GridTerminalSystem.GetBlockWithName("Light Front") as IMyReflectorLight;
+    backLight = GridTerminalSystem.GetBlockWithName("Light Back") as IMyReflectorLight;
 
     // Remote control.
     remoteControl = GridTerminalSystem.GetBlockWithName("Remote Control") as IMyShipController;
@@ -168,6 +170,7 @@ public void Main(string argument, UpdateType updateSource)
         {
             // ToggleBrakes(true);
             Connect();
+            LightsDisabled();
 
             phase = Phase.Docked;
         }
@@ -190,6 +193,8 @@ public void Main(string argument, UpdateType updateSource)
 
             ChangeDestination();
             InvertPropulsion();
+            InvertLights();
+            LightsEnabled();
             ToggleWheels(true);
 
             phase = Phase.Crusing;
@@ -260,6 +265,27 @@ private bool IsCharged()
 private bool IsFull()
 {
     return frontContainer.IsFull && backContainer.IsFull;
+}
+
+// Lights.
+private void LightsEnabled()
+{
+    frontLight.Enabled = true;
+    backLight.Enabled = true;
+}
+
+private void LightsDisabled()
+{
+    frontLight.Enabled = false;
+    backLight.Enabled = false;
+}
+
+private void InvertLights()
+{
+    Color color = backLight.Color;
+
+    backLight.Color = frontLight.Color;
+    frontLight.color = color;
 }
 
 // Connectors.
