@@ -5,7 +5,7 @@ private const float threshold = 10f;
 private const float maxSpeed = 100f;
 private const float dockingSpeed = 5f;
 private const float speedMarginOfError = maxSpeed * 0.05f;
-private const float operationalCharge = 0.99f;
+private const float operationalCharge = 0.98f;
 
 private bool run = false;
 private List<IMyTerminalBlock> wheels;
@@ -17,10 +17,17 @@ private IMyShipConnector frontConnector;
 private IMyShipConnector backConnector;
 private IMyShipConnector frontEjector;
 private IMyShipConnector backEjector;
+
+// Battery.
 private IMyBatteryBlock battery;
 private float maxStoredPower = 0;
+
+// Containers.
 private IMyInventory frontContainer;
 private IMyInventory backContainer;
+private float containersLastVolume;
+private DateTime LoadingTimeout;
+
 private double velocity = 0;
 private string target;
 private Vector3D targetPosition;
@@ -80,6 +87,11 @@ public Program()
     // Set initial target.
     target = "Load";
     targetPosition = load;
+    frontLight.Color = new Color(255, 255, 255);
+    backLight.Color = new Color(255, 0, 0);
+    
+    ConnectorsDisabled();
+    LightsEnabled();
 
     // ChangeDestination();
 
@@ -163,15 +175,13 @@ public void Main(string argument, UpdateType updateSource)
     // Docking phase.
     else if (phase == Phase.Docking)
     {
-        // look for a connector
-        // when found, stop and connect
-        // then move to docked phase
         if (IsConnectable())
         {
             // ToggleBrakes(true);
             Connect();
             LightsDisabled();
 
+            containerLastChange = DateTime.Now;
             phase = Phase.Docked;
         }
     }
@@ -179,13 +189,24 @@ public void Main(string argument, UpdateType updateSource)
     // Docked phase.
     else if (phase == Phase.Docked)
     {
+        // Check for last change in cargo volume.
+        float currentVolume = ContainersCurrentVolume();
+
+        if (currentVolume != containersLastVolume)
+        {
+            containersLastVolume = currentVolume;
+            LoadingTimeout = DateTime.Now.AddMinutes(5);
+        }
+
 
         // if battery is full && cargo is full
         // or timer > than...
         // IsCharged()
         // IsFull()
-        if (IsCharged())
-        {
+        if (
+            (IsCharged() && IsFull())//||
+            (IsNotEmpty() && DateTime.Now > LoadingTimeout)
+        ) {
             Disconnect();
             ConnectorsDisabled();
             
@@ -267,6 +288,11 @@ private bool IsFull()
     return frontContainer.IsFull && backContainer.IsFull;
 }
 
+private bool IsNotEmpty()
+{
+    return frontContainer.CurrentVolume + backContainer.CurrentVolume > 0;
+}
+
 // Lights.
 private void LightsEnabled()
 {
@@ -286,6 +312,12 @@ private void InvertLights()
 
     backLight.Color = frontLight.Color;
     frontLight.color = color;
+}
+
+// Containers.
+private float ContainersCurrentVolume()
+{
+    return frontContainer.CurrentVolume + backContainer.CurrentVolume;
 }
 
 // Connectors.
@@ -317,7 +349,6 @@ private bool IsConnectable()
 {
     return frontConnector.Status == MyShipConnectorStatus.Connectable || backConnector.Status == MyShipConnectorStatus.Connectable;
 }
-
 
 private bool IsConnected()
 {
