@@ -1,42 +1,3 @@
-private Vector3D unload = new Vector3(-51682.91, -27953.14, 16193.54);
-private Vector3D load = new Vector3(-51508.45, -28377.40, 16021.13);
-private const float startToSlowDown = 170f;
-private const float threshold = 10f;
-private const float maxSpeed = 100f;
-private const float dockingSpeed = 5f;
-private const float speedMarginOfError = maxSpeed * 0.05f;
-private const float operationalCharge = 0.98f;
-
-private bool run = false;
-private List<IMyTerminalBlock> wheels;
-private IMyRadioAntenna antenna;
-private IMyReflectorLight frontLight;
-private IMyReflectorLight backLight;
-private IMyShipController remoteControl;
-private IMyShipConnector frontConnector;
-private IMyShipConnector backConnector;
-private IMyShipConnector frontEjector;
-private IMyShipConnector backEjector;
-
-// Battery.
-private IMyBatteryBlock battery;
-private float maxStoredPower = 0;
-
-// Containers.
-private IMyInventory frontContainer;
-private IMyInventory backContainer;
-private float containersLastVolume;
-private DateTime LoadingTimeout;
-
-private double velocity = 0;
-private string target;
-private Vector3D targetPosition;
-
-// temp
-private int tempCounter = 0;
-private double targetVelocity = 0;
-private DateTime timer;
-
 private enum Phase
 {
     Crusing,
@@ -45,14 +6,54 @@ private enum Phase
     Docked
 }
 
+private enum Target
+{
+    Load,
+    Unload
+}
+
+private Vector3D unload = new Vector3(-51681.95, -27954.90, 16192.60);
+private Vector3D load = new Vector3(-51129.13, -29289.22, 15648.61);
+private const float startToSlowDown = 220f;
+private const float threshold = 10f;
+private const float maxVelocity = 70f;
+private const float dockingSpeed = 5f;
+private const float speedMarginOfError = maxVelocity * 0.05f;
+private const float operationalCharge = 0.98f;
+private const int LoadingTimeout = 20;
+
+private List<IMyTerminalBlock> wheels;
+private IMyRadioAntenna antenna;
+private IMyReflectorLight frontLight;
+private IMyReflectorLight backLight;
+private IMyShipController remoteControl;
+private List<IMyShipConnector> connectors;
+private List<IMyShipConnector> ejectors;
+
+// Battery.
+private IMyBatteryBlock battery;
+private float maxStoredPower = 0;
+
+// Containers.
+private List<IMyInventory> containers;
+private float containersLastVolume;
+private DateTime loadingTimeout;
+
+private double velocity = 0;
+private Target target;
+private Vector3D targetPosition;
+
+// temp
+private double targetVelocity = 0;
+private DateTime timer;
+
+
 private Phase phase = Phase.Crusing;
 
 #region Contructor
 public Program()
 {
     Runtime.UpdateFrequency = UpdateFrequency.Update10;
-
-    run = true;
 
     // Wheels.
     wheels = new List<IMyTerminalBlock>();
@@ -68,24 +69,33 @@ public Program()
     // Remote control.
     remoteControl = GridTerminalSystem.GetBlockWithName("Remote Control") as IMyShipController;
 
-    // Ejector.
-    frontEjector = GridTerminalSystem.GetBlockWithName("Ejector Front") as IMyShipConnector;
-    backEjector = GridTerminalSystem.GetBlockWithName("Ejector Back") as IMyShipConnector;
+    // Ejectors.
+    ejectors = new List<IMyShipConnector>();
+    ejectors.Add(GridTerminalSystem.GetBlockWithName("Ejector Front") as IMyShipConnector);
+    ejectors.Add(GridTerminalSystem.GetBlockWithName("Ejector Back") as IMyShipConnector);
+
+    foreach (IMyShipConnector ejector in ejectors)
+    {
+        // ejector.CollectAll = true;
+        ejector.ThrowOut = true;
+    }
 
     // Connectors.
-    frontConnector = GridTerminalSystem.GetBlockWithName("Connector Front") as IMyShipConnector;
-    backConnector = GridTerminalSystem.GetBlockWithName("Connector Back") as IMyShipConnector;
+    connectors = new List<IMyShipConnector>();
+    connectors.Add(GridTerminalSystem.GetBlockWithName("Connector Front") as IMyShipConnector);
+    connectors.Add(GridTerminalSystem.GetBlockWithName("Connector Back") as IMyShipConnector);
 
     // Battery.
     battery = GridTerminalSystem.GetBlockWithName("Battery") as IMyBatteryBlock;
     maxStoredPower = battery.MaxStoredPower;
 
     // Containers.
-    frontContainer = (GridTerminalSystem.GetBlockWithName("Container Front") as IMyCargoContainer).GetInventory();
-    backContainer = (GridTerminalSystem.GetBlockWithName("Container Back") as IMyCargoContainer).GetInventory();
+    containers = new List<IMyInventory>();
+    containers.Add((GridTerminalSystem.GetBlockWithName("Container Front") as IMyCargoContainer).GetInventory());
+    containers.Add((GridTerminalSystem.GetBlockWithName("Container Back") as IMyCargoContainer).GetInventory());
 
     // Set initial target.
-    target = "Load";
+    target = Target.Load;
     targetPosition = load;
     frontLight.Color = new Color(255, 255, 255);
     backLight.Color = new Color(255, 0, 0);
@@ -95,7 +105,7 @@ public Program()
 
     // ChangeDestination();
 
-    targetVelocity = maxSpeed;
+    targetVelocity = maxVelocity;
     //InvertPropulsion();
     ToggleWheels(true);
 
@@ -113,17 +123,6 @@ public void Main(string argument, UpdateType updateSource)
     Echo("Velocity: " + velocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
     Echo("MOE:" + speedMarginOfError.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
     Echo("TV:" + targetVelocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
-
-    if (tempCounter > 1)
-    {
-        run = false;
-    }
-
-    if (!run)
-    {
-        ToggleWheels(false);
-        return;
-    }
 
     #region Speed regulation
     if (velocity < targetVelocity - 1)
@@ -148,14 +147,14 @@ public void Main(string argument, UpdateType updateSource)
     if (DistanceToTarget() < startToSlowDown && phase == Phase.Crusing)
     {
         phase = Phase.Deceleration;
-        targetVelocity = maxSpeed;
+        targetVelocity = maxVelocity;
     }
 
      // Deceleration phase.
     else if (phase == Phase.Deceleration)
     {
         Echo("Deceleration: " + DecelerationStatus().ToString());
-        Echo("Target speed: " + (DecelerationStatus() * maxSpeed).ToString());
+        Echo("Target speed: " + (DecelerationStatus()).ToString());
 
         // If the vehicle slows down below the docking speed limit,
         // we move to the next phase.
@@ -169,7 +168,7 @@ public void Main(string argument, UpdateType updateSource)
         }
 
         // Otherwise, we set the target velocity based on the deceleration progression.
-        targetVelocity = DecelerationStatus() * maxSpeed;
+        targetVelocity = DecelerationStatus() * maxVelocity;
     }
 
     // Docking phase.
@@ -181,7 +180,7 @@ public void Main(string argument, UpdateType updateSource)
             Connect();
             LightsDisabled();
 
-            containerLastChange = DateTime.Now;
+            // containerLastChange = DateTime.Now;
             phase = Phase.Docked;
         }
     }
@@ -195,22 +194,22 @@ public void Main(string argument, UpdateType updateSource)
         if (currentVolume != containersLastVolume)
         {
             containersLastVolume = currentVolume;
-            LoadingTimeout = DateTime.Now.AddMinutes(5);
+            loadingTimeout = DateTime.Now.AddSeconds(LoadingTimeout);
         }
 
+        // Do the work depending on the station the train is at.
+        DoWork();
 
         // if battery is full && cargo is full
         // or timer > than...
         // IsCharged()
         // IsFull()
-        if (
-            (IsCharged() && IsFull())//||
-            (IsNotEmpty() && DateTime.Now > LoadingTimeout)
-        ) {
+        if (CanGo()) {
             Disconnect();
             ConnectorsDisabled();
+            EjectorsDisabled();
             
-            targetVelocity = maxSpeed;
+            targetVelocity = maxVelocity;
 
             ChangeDestination();
             InvertPropulsion();
@@ -219,8 +218,6 @@ public void Main(string argument, UpdateType updateSource)
             ToggleWheels(true);
 
             phase = Phase.Crusing;
-
-            tempCounter++;
         }
     }
     #endregion
@@ -269,13 +266,13 @@ private void ToggleBrakes(bool state)
 
 private void ChangeDestination()
 {
-    target = target == "Load" ? "Unload" : "Load";
-    targetPosition = target == "Load" ? load : unload;
+    target = target == Target.Load ? Target.Unload : Target.Load;
+    targetPosition = target == Target.Load ? load : unload;
 }
 
 private double DecelerationStatus()
 {
-    return (DistanceToTarget() - (startToSlowDown - threshold)) / (startToSlowDown - threshold);
+    return (DistanceToTarget() - threshold) / (startToSlowDown - threshold);
 }
 
 private bool IsCharged()
@@ -285,12 +282,17 @@ private bool IsCharged()
 
 private bool IsFull()
 {
-    return frontContainer.IsFull && backContainer.IsFull;
+    return containers.Count((IMyInventory c) => c.IsFull) == containers.Count;
+}
+
+private bool IsEmpty()
+{
+    return containers.Count((IMyInventory c) => c.CurrentVolume == 0) == containers.Count;
 }
 
 private bool IsNotEmpty()
 {
-    return frontContainer.CurrentVolume + backContainer.CurrentVolume > 0;
+    return containers.Sum(delegate(IMyInventory i) { return (float)i.CurrentVolume; }) > 0f;
 }
 
 // Lights.
@@ -311,49 +313,101 @@ private void InvertLights()
     Color color = backLight.Color;
 
     backLight.Color = frontLight.Color;
-    frontLight.color = color;
+    frontLight.Color = color;
 }
 
 // Containers.
 private float ContainersCurrentVolume()
 {
-    return frontContainer.CurrentVolume + backContainer.CurrentVolume;
+    return containers.Sum((IMyInventory i) => (float)i.CurrentVolume);
 }
 
 // Connectors.
 private void ConnectorsEnabled()
 {
-    frontConnector.Enabled = true;
-    backConnector.Enabled = true;
+    foreach (IMyShipConnector connector in connectors)
+    {
+        connector.Enabled = true;
+    }
 }
 
 private void ConnectorsDisabled()
 {
-    frontConnector.Enabled = false;
-    backConnector.Enabled = false;
+    foreach (IMyShipConnector connector in connectors)
+    {
+        connector.Enabled = false;
+    }
 }
 
 private void Connect()
 {
-    frontConnector.Connect();
-    backConnector.Connect();
+    connectors.ForEach((IMyShipConnector c) => c.Connect());
 }
 
 private void Disconnect()
 {
-    frontConnector.Disconnect();
-    backConnector.Disconnect();
+    connectors.ForEach((IMyShipConnector c) => c.Disconnect());
 }
 
 private bool IsConnectable()
 {
-    return frontConnector.Status == MyShipConnectorStatus.Connectable || backConnector.Status == MyShipConnectorStatus.Connectable;
+    foreach (IMyShipConnector connector in connectors)
+    {
+        if (connector.Status == MyShipConnectorStatus.Connectable)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 private bool IsConnected()
 {
-    return frontConnector.Status == MyShipConnectorStatus.Connected || backConnector.Status == MyShipConnectorStatus.Connected;
+    foreach (IMyShipConnector connector in connectors)
+    {
+        if (connector.Status == MyShipConnectorStatus.Connected)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // Ejectors.
-// private void 
+private void EjectorsEnabled()
+{
+    ejectors.ForEach(delegate(IMyShipConnector e) { e.Enabled = true; });
+}
+
+private void EjectorsDisabled()
+{
+    ejectors.ForEach(delegate(IMyShipConnector e) { e.Enabled = false; });
+}
+
+private void DoWork()
+{
+    if (target == Target.Load)
+    {
+        
+    }
+    
+    else if (target == Target.Unload)
+    {
+        EjectorsEnabled();
+    }
+}
+
+private bool CanGo()
+{
+    if (target == Target.Load)
+    {
+        return (IsCharged() && IsFull()) || (IsNotEmpty() && DateTime.Now > loadingTimeout);
+    }
+    
+    else
+    {
+        return IsCharged() && IsEmpty();
+    }
+}
