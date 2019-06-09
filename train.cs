@@ -118,6 +118,8 @@ public void Main(string argument, UpdateType updateSource)
     Echo("Speed: " + s + "km/h (" + v + "m/s)");
 
     #region Speed regulation
+    if (phase != Phase.Docked)
+    {
     if (velocity < targetVelocity - 1)
     {
         ToggleWheels(true);
@@ -132,6 +134,7 @@ public void Main(string argument, UpdateType updateSource)
     {
         ToggleBrakes(false);
         ToggleWheels(false);
+    }
     }
     #endregion
 
@@ -167,6 +170,7 @@ public void Main(string argument, UpdateType updateSource)
         if (IsConnectable())
         {
             Connect();
+            ToggleWheels(false);
             LightsDisabled();
 
             phase = Phase.Docked;
