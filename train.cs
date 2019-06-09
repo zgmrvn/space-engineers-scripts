@@ -76,7 +76,7 @@ public Program()
 
     foreach (IMyShipConnector ejector in ejectors)
     {
-        ejector.CollectAll = true;
+        // ejector.CollectAll = true;
         ejector.ThrowOut = true;
     }
 
@@ -388,12 +388,7 @@ private void EjectorsDisabled()
 
 private void DoWork()
 {
-    if (target == Target.Load)
-    {
-        
-    }
-    
-    else if (target == Target.Unload)
+    if (target == Target.Unload)
     {
         EjectorsEnabled();
     }
