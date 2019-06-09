@@ -200,10 +200,7 @@ public void Main(string argument, UpdateType updateSource)
         // Do the work depending on the station the train is at.
         DoWork();
 
-        // if battery is full && cargo is full
-        // or timer > than...
-        // IsCharged()
-        // IsFull()
+        // Once the work is done.
         if (CanGo()) {
             Disconnect();
             ConnectorsDisabled();
