@@ -76,7 +76,7 @@ public Program()
 
     foreach (IMyShipConnector ejector in ejectors)
     {
-        // ejector.CollectAll = true;
+        ejector.CollectAll = true;
         ejector.ThrowOut = true;
     }
 
