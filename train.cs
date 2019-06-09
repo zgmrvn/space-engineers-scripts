@@ -120,21 +120,21 @@ public void Main(string argument, UpdateType updateSource)
     #region Speed regulation
     if (phase != Phase.Docked)
     {
-    if (velocity < targetVelocity - 1)
-    {
-        ToggleWheels(true);
-    }
+        if (velocity < targetVelocity - 1)
+        {
+            ToggleWheels(true);
+        }
 
-    else if (velocity > targetVelocity + 1)
-    {
-        ToggleBrakes(true);
-    }
+        else if (velocity > targetVelocity + 1)
+        {
+            ToggleBrakes(true);
+        }
 
-    else if (velocity > targetVelocity)
-    {
-        ToggleBrakes(false);
-        ToggleWheels(false);
-    }
+        else if (velocity > targetVelocity)
+        {
+            ToggleBrakes(false);
+            ToggleWheels(false);
+        }
     }
     #endregion
 
@@ -174,6 +174,7 @@ public void Main(string argument, UpdateType updateSource)
             LightsDisabled();
 
             phase = Phase.Docked;
+            Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
     }
 
@@ -207,6 +208,7 @@ public void Main(string argument, UpdateType updateSource)
             ToggleWheels(true);
 
             phase = Phase.Crusing;
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
         }
     }
     #endregion
