@@ -42,12 +42,7 @@ private DateTime loadingTimeout;
 private double velocity = 0;
 private Target target;
 private Vector3D targetPosition;
-
-// temp
 private double targetVelocity = 0;
-private DateTime timer;
-
-
 private Phase phase = Phase.Crusing;
 
 #region Contructor
