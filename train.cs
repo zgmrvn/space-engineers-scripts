@@ -166,11 +166,9 @@ public void Main(string argument, UpdateType updateSource)
     {
         if (IsConnectable())
         {
-            // ToggleBrakes(true);
             Connect();
             LightsDisabled();
 
-            // containerLastChange = DateTime.Now;
             phase = Phase.Docked;
         }
     }
@@ -365,12 +363,12 @@ private bool IsConnected()
 // Ejectors.
 private void EjectorsEnabled()
 {
-    ejectors.ForEach(delegate(IMyShipConnector e) { e.Enabled = true; });
+    ejectors.ForEach((IMyShipConnector e) => e.Enabled = true);
 }
 
 private void EjectorsDisabled()
 {
-    ejectors.ForEach(delegate(IMyShipConnector e) { e.Enabled = false; });
+    ejectors.ForEach((IMyShipConnector e) => e.Enabled = false);
 }
 
 private void DoWork()
