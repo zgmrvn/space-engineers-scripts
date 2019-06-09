@@ -14,9 +14,7 @@ private enum Target
 
 private Vector3D unload = new Vector3(-51681.95, -27954.90, 16192.60);
 private Vector3D load = new Vector3(-51129.13, -29289.22, 15648.61);
-private const float startToSlowDown = 220f;
-private const float threshold = 10f;
-private const float maxVelocity = 70f;
+private const float connectorSafeDistance = 10f;
 private const float dockingSpeed = 5f;
 private const float speedMarginOfError = maxVelocity * 0.05f;
 private const float operationalCharge = 0.98f;
@@ -262,7 +260,7 @@ private void ChangeDestination()
 
 private double DecelerationStatus()
 {
-    return (DistanceToTarget() - threshold) / (startToSlowDown - threshold);
+    return (DistanceToTarget() - connectorSafeDistance) / (startToSlowDown - connectorSafeDistance);
 }
 
 private bool IsCharged()
