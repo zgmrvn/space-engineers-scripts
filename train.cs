@@ -14,11 +14,12 @@ private enum Target
 
 private Vector3D unload = new Vector3(-51681.95, -27954.90, 16192.60);
 private Vector3D load = new Vector3(-51129.13, -29289.22, 15648.61);
+private const float startToSlowDown = 250f;
 private const float connectorSafeDistance = 10f;
-private const float dockingSpeed = 5f;
-private const float speedMarginOfError = maxVelocity * 0.05f;
+private const float maxSpeed = 80f;
+private const float maxVelocity = maxSpeed * 1000 / 3600;
+private const float dockingVelocity = 2f;
 private const float operationalCharge = 0.98f;
-private const int LoadingTimeout = 20;
 
 private List<IMyTerminalBlock> wheels;
 private IMyRadioAntenna antenna;
@@ -36,6 +37,7 @@ private float maxStoredPower = 0;
 private List<IMyInventory> containers;
 private float containersLastVolume;
 private DateTime loadingTimeout;
+private const int LoadingTimeout = 20;
 
 private double velocity = 0;
 private Target target;
@@ -106,14 +108,14 @@ public Program()
 
 public void Main(string argument, UpdateType updateSource)
 {
-    velocity = remoteControl.GetShipVelocities().LinearVelocity.Length() * 3600 / 1000;
-
+    velocity = remoteControl.GetShipVelocities().LinearVelocity.Length();
 
     Echo("Target: " + target + " (" + DistanceToTarget().ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "m)");
     Echo("Phase: " + phase.ToString());
-    Echo("Velocity: " + velocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
-    Echo("MOE:" + speedMarginOfError.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
-    Echo("TV:" + targetVelocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
+    string v = velocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+    string s = (velocity * 3600 / 1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+    Echo("Speed: " + s + "km/h (" + v + "m/s)");
+    Echo("Target speed: " + (targetVelocity * 3600 / 1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "km/h");
 
     #region Speed regulation
     if (velocity < targetVelocity - 1)
@@ -144,14 +146,11 @@ public void Main(string argument, UpdateType updateSource)
      // Deceleration phase.
     else if (phase == Phase.Deceleration)
     {
-        Echo("Deceleration: " + DecelerationStatus().ToString());
-        Echo("Target speed: " + (DecelerationStatus()).ToString());
-
         // If the vehicle slows down below the docking speed limit,
         // we move to the next phase.
-        if (velocity < dockingSpeed)
+        if (velocity < dockingVelocity)
         {
-            targetVelocity = dockingSpeed;
+            targetVelocity = dockingVelocity;
             ConnectorsEnabled();
             phase = Phase.Docking;
             
