@@ -112,10 +112,10 @@ public void Main(string argument, UpdateType updateSource)
 
     Echo("Target: " + target + " (" + DistanceToTarget().ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "m)");
     Echo("Phase: " + phase.ToString());
+    Echo("Target speed: " + (targetVelocity * 3600 / 1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "km/h");
     string v = velocity.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
     string s = (velocity * 3600 / 1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
     Echo("Speed: " + s + "km/h (" + v + "m/s)");
-    Echo("Target speed: " + (targetVelocity * 3600 / 1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "km/h");
 
     #region Speed regulation
     if (velocity < targetVelocity - 1)
