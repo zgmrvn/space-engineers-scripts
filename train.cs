@@ -103,8 +103,6 @@ public Program()
     targetVelocity = maxVelocity;
     //InvertPropulsion();
     ToggleWheels(true);
-
-    //frontLight.ApplyAction("OnOff_On");
 }
 #endregion
 
