@@ -89,7 +89,7 @@ public Program()
     containers.Add((GridTerminalSystem.GetBlockWithName("Container Front") as IMyCargoContainer).GetInventory());
     containers.Add((GridTerminalSystem.GetBlockWithName("Container Back") as IMyCargoContainer).GetInventory());
 
-    // Set initial target.
+    // Initial settings.
     target = Target.Load;
     targetPosition = load;
     frontLight.Color = new Color(255, 255, 255);
